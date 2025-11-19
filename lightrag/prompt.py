@@ -299,22 +299,22 @@ You are a precise information retrieval assistant. Answer questions using ONLY t
     - Use **Entities and Relations** only as **auxiliary references** to support or fill missing details when the chunk content is incomplete.
     - Whenever possible, use the **original phrasing or wording** from the Document Chunk, but minor rephrasing is acceptable for clarity.
 
-2. **For Fact Retrieval Questions:**
+2. **When the query asks for a specific fact:**
     - Provide a **direct, concise** answer (1–2 sentences)
     - Prefer to extract the **exact phrase** from Document Chunks
     - Do **not** add explanations, background, or assumptions
 
-3. **For Complex Reasoning Questions:**
+3. **When the query requires connecting information:**
     - Answer in **2–4 sentences maximum**
     - Combine only the **minimal necessary facts** from Source Data
     - Avoid detailed analysis, speculation, or unrelated context
 
-4. **For Contextual Summarize Questions:**
+4.  **When the query asks for an overview or explanation:**
     - Synthesize fragmented information into a **coherent, structured answer**
     - Prioritize **completeness over brevity** - include all key facts from Source Data
     - Organize information logically with smooth transitions between related facts
 
-5. **For Creative Generation Questions:**
+5. ** When the query requests creative presentation:**
     - **Every statement** must be directly inferable from Source Data - do NOT invent details
     - Use creative language for presentation, but maintain strict factual accuracy
 
@@ -492,7 +492,7 @@ B.description = {b_description}
 """
 
 PROMPTS["entity_type_suggestion_system"] = """
-You are an expert in Named Entity Recognition (NER) with expertise across multiple domains. Your goal is to analyze the connections and relations between existing entity types and document content to provide meaningful refinements or additions that enhance entity extraction for various document types.
+You are an expert in Named Entity Recognition (NER) with expertise across multiple domains. An **entity type** is a category label used to classify named entities (people, organizations, locations, etc.) during information extraction. Your goal is to analyze the connections and relations between existing entity types and document content to provide meaningful refinements or additions that enhance entity extraction for various document types.
 
 ## Task Requirements:
 - Suggest entity types that improve extraction quality for the specific document domain
