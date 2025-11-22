@@ -12,6 +12,11 @@ import nest_asyncio
 nest_asyncio.apply()
 import time
 
+setup_logger("lightrag", level="INFO")
+
+if not os.path.exists(os.environ["WORKING_DIR"]):
+    os.mkdir(os.environ["WORKING_DIR"])
+    
 def extract_txt_text(path: Path) -> str:
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read().strip()
@@ -55,6 +60,7 @@ async def initialize_rag():
         working_dir=os.environ["WORKING_DIR"],
         embedding_func=openai_embed,
         llm_model_func= gpt_5_mini_complete,
+        llm_model_kwargs={"reasoning_effort": "minimal"},
         tool_llm_model_name= "gpt-5-mini",
         tool_llm_model_kwargs={"reasoning_effort": "minimal"},
         chunk_token_size=600,
@@ -62,7 +68,7 @@ async def initialize_rag():
         llm_model_max_async=32,
         enable_node_embedding=True,
         enable_llm_cache= False,
-        max_parallel_insert = 8
+        max_parallel_insert = 2
     )
     
     # IMPORTANT: Both initialization calls are required!
@@ -85,7 +91,7 @@ async def main():
 
         if texts:
             start = time.time()
-            rag.insert(texts, file_paths=file_paths, timestamps=fiscal_years, agentic_merging=True, agentic_merging_threshold=0.7)
+            rag.insert(texts, file_paths=file_paths, timestamps=fiscal_years, agentic_merging=True, agentic_merging_threshold=0.9)
             end = time.time()
             print(f"Graph building time: {end - start} seconds")
             print("Graph building success!")

@@ -9,6 +9,10 @@ from lightrag.utils import setup_logger, EmbeddingFunc, TokenTracker
 import nest_asyncio
 nest_asyncio.apply()
 
+setup_logger("lightrag", level="INFO")
+
+if not os.path.exists(os.environ["WORKING_DIR"]):
+    os.mkdir(os.environ["WORKING_DIR"])
 
 # ============================================================
 # Global Token Tracker Instance

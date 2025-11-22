@@ -10,15 +10,19 @@ from lightrag.utils import setup_logger, EmbeddingFunc
 import nest_asyncio
 nest_asyncio.apply()
 
+setup_logger("lightrag", level="INFO")
+
+if not os.path.exists(os.environ["WORKING_DIR"]):
+    os.mkdir(os.environ["WORKING_DIR"])
 
 async def initialize_rag():
     rag =  LightRAG(
         working_dir=os.environ["WORKING_DIR"],
         embedding_func=openai_embed,
-        llm_model_func=gpt_5_mini_complete,
-        llm_model_kwargs={"reasoning_effort": "minimal"},
-        tool_llm_model_name= "gpt-5-mini",
-        tool_llm_model_kwargs={"reasoning_effort": "minimal"},
+        llm_model_func=gpt_4o_mini_complete,
+        #llm_model_kwargs={"reasoning_effort": "low"},
+        tool_llm_model_name= "gpt-4o-mini",
+        #tool_llm_model_kwargs={"reasoning_effort": "low"},
         chunk_token_size=600,
         chunk_overlap_token_size=100,
         enable_node_embedding=True,
@@ -39,11 +43,14 @@ async def main():
         print("Initialization success!!")
 
         query = """
+我想詢問 Apple 主席對於關稅的議題是否有變化過?
 Apple 在這幾季的趨勢變化，有什麼值得可以注意的警訊?
 用繁體中文回答我
 
         """
 
+        # 將時間相關模糊問題進行 rewrite
+        #rewritten_query = rewriter(query)
         print("query: ", query)
 
         response,context = rag.query(
@@ -59,31 +66,13 @@ Apple 在這幾季的趨勢變化，有什麼值得可以注意的警訊?
                 max_relation_tokens=30000,
                 max_hop=2,
                 top_neighbors= 5,
-                multi_hop_relevance_threshold=0.5,
+                multi_hop_relevance_threshold=0.4,
                 enable_rerank=False,
                 top_ppr_nodes=10,       
                 top_fastrp_nodes=5,     
                 enable_recognition=True,
                 recognition_batch_size=30,
                 response_type="Single Paragraph",
-                only_need_context=False,
-                user_prompt="""
-                            You have to answer the question following the format below:
-                            ## <Title of the report>
-                            ### Overview
-                            <description: Provide a high-level summary, including scope, purpose, and context.>
-
-                            ### Key Themes
-                            <description: Extract the main recurring themes, announcements, priorities, challenges, and opportunities.>
-
-                            ### Comparative Insights
-                            <description: Highlight similarities, differences, shifts in tone, and evolving trends.>
-
-                            ### Actionable Insights
-                            <description: Summarize practical implications or recommendations (e.g., for strategy, investment, or risk management).>
-
-                            ### Reference
-                            <description: List ALL sources used>"""
             ),
         )
 
