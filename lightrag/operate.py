@@ -2719,7 +2719,13 @@ async def kg_query(
         if query_param.user_prompt
         else PROMPTS["DEFAULT_USER_PROMPT"]
     )
-    sys_prompt_temp = system_prompt if system_prompt else PROMPTS["rag_response"]
+    # Select appropriate prompt template based on context_kg_only parameter
+    if query_param.context_kg_only:
+        default_prompt = PROMPTS["rag_response_only_kg"]
+    else:
+        default_prompt = PROMPTS["rag_response"]
+
+    sys_prompt_temp = system_prompt if system_prompt else default_prompt
     sys_prompt = sys_prompt_temp.format(
         context_data=context,
         response_type=query_param.response_type,
@@ -3617,8 +3623,8 @@ async def _build_query_context(
             )
             task_names.append("global_query")
 
-        # Add vector chunk query for mix mode
-        if query_param.mode == "mix" and chunks_vdb:
+        # Add vector chunk query for mix mode (skip if context_kg_only is True)
+        if query_param.mode == "mix" and chunks_vdb and not query_param.context_kg_only:
             tasks.append(
                 _get_vector_context(
                     query,
@@ -3922,8 +3928,9 @@ async def _build_query_context(
                     })
 
     # Apply token processing to initial chunks for text_units_context
+    # Skip chunk processing entirely if context_kg_only is enabled
     text_units_context = []
-    if initial_merged_chunks:
+    if not query_param.context_kg_only and initial_merged_chunks:
         # Apply chunk_top_k truncation if specified
         if query_param.chunk_top_k and len(initial_merged_chunks) > query_param.chunk_top_k:
             initial_merged_chunks = initial_merged_chunks[:query_param.chunk_top_k]
@@ -3984,20 +3991,41 @@ async def _build_query_context(
     fields_to_remove = {"source_id", "created_at", "file_path","id"}
     entities_for_llm = [{k: v for k, v in e.items() if k not in fields_to_remove} for e in entities_context]
     relations_for_llm = [{k: v for k, v in r.items() if k not in fields_to_remove} for r in relations_context]
-    chunks_for_llm = [{k: v for k, v in c.items() if k != "id"} for c in text_units_context]
+
+    # Conditionally include chunks based on context_kg_only parameter
+    if query_param.context_kg_only:
+        # KG-only mode: exclude chunks entirely
+        chunks_for_llm = []
+    else:
+        # Normal mode: include chunks
+        chunks_for_llm = [{k: v for k, v in c.items() if k != "id"} for c in text_units_context]
 
     # Choose format based on query_param.context_format
     if query_param.context_format == "markdown":
-        chunks_section = format_chunks_markdown(chunks_for_llm)
-        entities_section = format_entities_markdown(entities_for_llm)
-        relations_section = format_relations_markdown(relations_for_llm)
-        result = f"{chunks_section}\n{entities_section}\n{relations_section}"
+        if query_param.context_kg_only:
+            # KG-only mode: no chunks section
+            entities_section = format_entities_markdown(entities_for_llm)
+            relations_section = format_relations_markdown(relations_for_llm)
+            result = f"{entities_section}\n{relations_section}"
+        else:
+            # Normal mode: include chunks
+            chunks_section = format_chunks_markdown(chunks_for_llm)
+            entities_section = format_entities_markdown(entities_for_llm)
+            relations_section = format_relations_markdown(relations_for_llm)
+            result = f"{chunks_section}\n{entities_section}\n{relations_section}"
     else:  # json format
-        chunks_section = format_chunks_json(chunks_for_llm)
-        entities_section = format_entities_json(entities_for_llm)
-        relations_section = format_relations_json(relations_for_llm)
-        result = f"{chunks_section}\n{entities_section}\n{relations_section}"
-    
+        if query_param.context_kg_only:
+            # KG-only mode: no chunks section
+            entities_section = format_entities_json(entities_for_llm)
+            relations_section = format_relations_json(relations_for_llm)
+            result = f"{entities_section}\n{relations_section}"
+        else:
+            # Normal mode: include chunks
+            chunks_section = format_chunks_json(chunks_for_llm)
+            entities_section = format_entities_json(entities_for_llm)
+            relations_section = format_relations_json(relations_for_llm)
+            result = f"{chunks_section}\n{entities_section}\n{relations_section}"
+
     # Multi-hop expansion if any expansion method is enabled
     should_expand = (
         query_param.max_hop > 0 or
@@ -4518,10 +4546,11 @@ async def _build_query_context(
         if query_param.chunk_top_k and len(final_merged_chunks) > query_param.chunk_top_k:
             final_merged_chunks = final_merged_chunks[:query_param.chunk_top_k]
             # logger.info(f"Truncated chunks to chunk_top_k={query_param.chunk_top_k}: {len(final_merged_chunks)} chunks")
-        
+
         # Apply token processing to final merged chunks
+        # Skip chunk processing if context_kg_only is enabled
         tokenizer = text_chunks_db.global_config.get("tokenizer")
-        if final_merged_chunks and tokenizer:
+        if not query_param.context_kg_only and final_merged_chunks and tokenizer:
             # Calculate dynamic token limit for text chunks
             # Remove internal fields before sending to LLM
             fields_to_remove = {"source_id", "created_at", "file_path","id"}
@@ -4534,7 +4563,26 @@ async def _build_query_context(
             relations_str = '\n'.join([json.dumps(r, ensure_ascii=False) for r in relations_for_llm])
 
             # Calculate base context tokens (entities + relations + template)
-            kg_context_template = """
+            # Adapt template based on context_kg_only parameter
+            if query_param.context_kg_only:
+                # KG-only mode: no chunks section in template
+                kg_context_template = """
+Knowledge Graph Data (Entity):
+
+```json
+{entities_str}
+```
+
+Knowledge Graph Data (Relationship):
+
+```json
+{relations_str}
+```
+
+"""
+            else:
+                # Normal mode: include chunks section
+                kg_context_template = """
 Document Chunks (Each entry has a reference_id refer to the `Reference Document List`):
 
 ```json
@@ -4568,8 +4616,14 @@ Knowledge Graph Data (Relationship):
             )
             
             # Get the system prompt template from PROMPTS
+            # Select appropriate prompt template based on context_kg_only parameter
+            if query_param.context_kg_only:
+                default_prompt = PROMPTS["rag_response_only_kg"]
+            else:
+                default_prompt = PROMPTS["rag_response"]
+
             sys_prompt_template = text_chunks_db.global_config.get(
-                "system_prompt_template", PROMPTS["rag_response"]
+                "system_prompt_template", default_prompt
             )
             
             # Create sample system prompt for overhead calculation
@@ -4723,10 +4777,11 @@ Knowledge Graph Data (Relationship):
         if query_param.chunk_top_k and len(final_merged_chunks) > query_param.chunk_top_k:
             final_merged_chunks = final_merged_chunks[:query_param.chunk_top_k]
             logger.info(f"Truncated chunks to chunk_top_k={query_param.chunk_top_k}: {len(final_merged_chunks)} chunks")
-        
+
         # Apply token processing to final merged chunks
+        # Skip chunk processing if context_kg_only is enabled
         tokenizer = text_chunks_db.global_config.get("tokenizer")
-        if final_merged_chunks and tokenizer:
+        if not query_param.context_kg_only and final_merged_chunks and tokenizer:
             # Same token processing logic as in multi-hop expansion
             # Remove internal fields before token calculation
             fields_to_remove = {"source_id", "created_at", "file_path","id"}
@@ -4737,7 +4792,26 @@ Knowledge Graph Data (Relationship):
             entities_str = '\n'.join([json.dumps(e, ensure_ascii=False) for e in entities_for_token_calc])
             relations_str = '\n'.join([json.dumps(r, ensure_ascii=False) for r in relations_for_token_calc])
 
-            kg_context_template = """
+            # Adapt template based on context_kg_only parameter
+            if query_param.context_kg_only:
+                # KG-only mode: no chunks section in template
+                kg_context_template = """
+Knowledge Graph Data (Entity):
+
+```json
+{entities_str}
+```
+
+Knowledge Graph Data (Relationship):
+
+```json
+{relations_str}
+```
+
+"""
+            else:
+                # Normal mode: include chunks section
+                kg_context_template = """
 Document Chunks (Each entry has a reference_id refer to the `Reference Document List`):
 
 ```json
@@ -4768,11 +4842,17 @@ Knowledge Graph Data (Relationship):
                 if query_param.response_type
                 else "Multiple Paragraphs"
             )
-            
+
+            # Select appropriate prompt template based on context_kg_only parameter
+            if query_param.context_kg_only:
+                default_prompt = PROMPTS["rag_response_only_kg"]
+            else:
+                default_prompt = PROMPTS["rag_response"]
+
             sys_prompt_template = text_chunks_db.global_config.get(
-                "system_prompt_template", PROMPTS["rag_response"]
+                "system_prompt_template", default_prompt
             )
-            
+
             sample_sys_prompt = sys_prompt_template.format(
                 history="",
                 context_data="",
@@ -4963,19 +5043,40 @@ Knowledge Graph Data (Relationship):
     fields_to_remove = {"source_id", "created_at", "file_path","id"}
     entities_for_llm = [{k: v for k, v in e.items() if k not in fields_to_remove} for e in entities_context]
     relations_for_llm = [{k: v for k, v in r.items() if k not in fields_to_remove} for r in relations_context]
-    chunks_for_llm = [{k: v for k, v in c.items() if k != "id"} for c in text_units_context]
+
+    # Conditionally include chunks based on context_kg_only parameter
+    if query_param.context_kg_only:
+        # KG-only mode: exclude chunks entirely
+        chunks_for_llm = []
+    else:
+        # Normal mode: include chunks
+        chunks_for_llm = [{k: v for k, v in c.items() if k != "id"} for c in text_units_context]
 
     # Choose format based on query_param.context_format
     if query_param.context_format == "markdown":
-        chunks_section = format_chunks_markdown(chunks_for_llm)
-        entities_section = format_entities_markdown(entities_for_llm)
-        relations_section = format_relations_markdown(relations_for_llm)
-        result = f"{chunks_section}\n{entities_section}\n{relations_section}"
+        if query_param.context_kg_only:
+            # KG-only mode: no chunks section
+            entities_section = format_entities_markdown(entities_for_llm)
+            relations_section = format_relations_markdown(relations_for_llm)
+            result = f"{entities_section}\n{relations_section}"
+        else:
+            # Normal mode: include chunks
+            chunks_section = format_chunks_markdown(chunks_for_llm)
+            entities_section = format_entities_markdown(entities_for_llm)
+            relations_section = format_relations_markdown(relations_for_llm)
+            result = f"{chunks_section}\n{entities_section}\n{relations_section}"
     else:  # json format
-        chunks_section = format_chunks_json(chunks_for_llm)
-        entities_section = format_entities_json(entities_for_llm)
-        relations_section = format_relations_json(relations_for_llm)
-        result = f"{chunks_section}\n{entities_section}\n{relations_section}"
+        if query_param.context_kg_only:
+            # KG-only mode: no chunks section
+            entities_section = format_entities_json(entities_for_llm)
+            relations_section = format_relations_json(relations_for_llm)
+            result = f"{entities_section}\n{relations_section}"
+        else:
+            # Normal mode: include chunks
+            chunks_section = format_chunks_json(chunks_for_llm)
+            entities_section = format_entities_json(entities_for_llm)
+            relations_section = format_relations_json(relations_for_llm)
+            result = f"{chunks_section}\n{entities_section}\n{relations_section}"
 
     return result
 

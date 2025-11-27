@@ -2278,6 +2278,8 @@ class LightRAG:
                 chunks_vdb=self.chunks_vdb,
             )
         elif param.mode == "naive":
+            if param.context_kg_only:
+                logger.warning("context_kg_only parameter is ignored in naive mode (chunks-only mode)")
             response = await naive_query(
                 query.strip(),
                 self.chunks_vdb,

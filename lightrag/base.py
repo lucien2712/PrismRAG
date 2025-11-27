@@ -192,6 +192,12 @@ class QueryParam:
     - "markdown": Markdown format with headers and lists (default)
     """
 
+    context_kg_only: bool = False
+    """If True, excludes document chunks from LLM context, using only entities and relations from knowledge graph.
+    When enabled, the system will only provide KG data (entities and relations) to the LLM without including
+    the original text chunks. This is useful when you want pure graph-based reasoning without chunk content.
+    Default is False."""
+
 
 @dataclass
 class StorageNameSpace(ABC):
