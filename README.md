@@ -7,7 +7,7 @@
 ### 🔍 **Three-Perspective Expansion Architecture**
 
 * **Problem**: LightRAG primarily supports one-hop expansion, limiting indirect but meaningful reasoning.
-* **Solution**: PrismRAG employs a **three-perspective expansion approach** that processes queries from complementary angles: semantic multi-hop traversal, global importance ranking via Query-aware Personalized PageRank, and structural similarity through Context-aware FastRP embeddings with edge weights.
+* **Solution**: PrismRAG employs a **three-perspective expansion approach** that processes queries from complementary angles: semantic multi-hop traversal, global importance ranking via Query-aware Personalized PageRank, and structural similarity through content-aware FastRP embeddings with edge weights.
 * *Currently implemented for the NanoVectorDB backend.*
 
 **🏗️ Architecture Overview:**
@@ -26,7 +26,10 @@ $$R_{final} = \text{merge}(R_{multihop}, R_{ppr}, R_{fastrp})$$
 
 Graph traversal that expands from seed entities through neighbors, scoring candidates by entity-query similarity and relationship-query similarity.
 
-$$S_{multihop}(e, q, h) = \alpha \cdot sim_{entity}(e, q) + \beta \cdot sim_{relation}(r, q) + \gamma \cdot \delta^{h-1}$$
+$$S(e, q, h)
+= \alpha \cdot \mathrm{sim}_{\text{entity}}(e, q)
++ \beta \cdot \mathrm{sim}_{\text{relation}}(r, q)
++ \gamma \cdot \delta^{h-1}$$
 
 where:
 - $\alpha = 0.4$ (entity similarity weight)
@@ -37,15 +40,21 @@ where:
 
 **🎯 Query-aware Personalized PageRank:**
 
-$$PPR_{query}(v; S, W, E) = (1-d) \cdot p_{S,W}(v) + d \cdot \sum_{u \to v} \frac{PPR_{query}(u; S, W, E) \cdot e_{reweight}(u,v)}{\sum_{x} e_{reweight}(u,x)}$$
+$$PPR_{\text{query}}(v; S, W, E)
+= (1 - d)\, p_{S,W}(v) + d \sum_{u \rightarrow v}
+\frac{
+PPR_{\text{query}}(u; S, W, E)\, e_{\text{weight}}(u,v)
+}{
+\sum_{x} e_{\text{weight}}(u,x)
+}$$
 
 where:
 - $S$ = seed entities, $W$ = query-aware seed weights
 - $E$ = query-aware edge weights, $d = 0.85$ (damping factor)
 - $p_{S,W}(v)$ = personalization vector with weighted seeds
-- $e_{reweight}(u,v)$ = temporarily adjusted edge weights based on query-relation similarity
+- $e_{weight}(u,v)$ = temporarily adjusted edge weights based on query-relation similarity
 
-**🧬 Context-aware FastRP with Edge Weights:**
+**🧬 Content-aware FastRP with Edge Weights:**
 
 $$X = \sum_{k=0}^{K} w_k \cdot D^r \cdot S^k \cdot R$$
 
@@ -203,7 +212,7 @@ async def main():
             max_hop=2,              # Multi-hop traversal depth
             top_neighbors=30,       # Max neighbor per node
             top_ppr_nodes=5,        # Top PageRank entities
-            top_fastrp_nodes=5      # Top Context-aware FastRP structural entities
+            top_fastrp_nodes=5      # Top Content-aware FastRP structural entities
         )
     )
 
@@ -228,7 +237,7 @@ response = rag.query(query, param=QueryParam(
     max_hop=2,           # Multi-hop traversal
     top_neighbors=30,    # Top neighbor per node
     top_ppr_nodes=5,     # Personalized PageRank entities
-    top_fastrp_nodes=5   # Context-aware FastRP structural entities
+    top_fastrp_nodes=5   # Content-aware FastRP structural entities
 ))
 ```
 
@@ -238,7 +247,7 @@ response = rag.query(query, param=QueryParam(
 
 PrismRAG extends **LightRAG** with:
 
-1. **Three-Perspective Expansion** – Multi-hop traversal, Query-aware Personalized PageRank, and Context-aware FastRP structural similarity providing complementary retrieval perspectives.
+1. **Three-Perspective Expansion** – Multi-hop traversal, Query-aware Personalized PageRank, and Content-aware FastRP structural similarity providing complementary retrieval perspectives.
 2. **Adaptive Entity Type Discovery** – Dynamic schema induction for domain-specific contexts.
 3. **Agentic Entity Merging** – Hybrid vector+LLM pipeline with cosine similarity pre-filtering and confidence thresholding.
 4. **Context Recognition Filtering** – LLM-based relevance filtering to remove query-irrelevant entities/relations.
