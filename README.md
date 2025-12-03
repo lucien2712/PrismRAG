@@ -58,7 +58,7 @@ where:
 
 $$X = \sum_{k=0}^{K} w_k \cdot D^r \cdot S^k \cdot R$$
 
-where $S = D^{-1/2}A_{weighted}D^{-1/2}$, $A_{weighted}$ uses co-occurrence-based edge weights
+where $S = D^{-1/2}A_{weight}D^{-1/2}$, $A_{weight}$ uses co-occurrence-based edge weights
 
 ### 🧠 **Adaptive Entity Type Discovery**
 
