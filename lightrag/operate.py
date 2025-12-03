@@ -3082,7 +3082,7 @@ async def _semantic_expansion_plus_structural_analysis(
     relationships_vdb: BaseVectorStorage,
     global_config: dict[str, str],
 ) -> tuple[list[dict], list[dict]]:
-    """Three-way parallel expansion: Multi-hop + PPR + Context-aware FastRP with independent pools.
+    """Three-way parallel expansion: Multi-hop + PPR + Content-aware FastRP with independent pools.
 
     Each method is independently controlled and will only execute if its parameter is > 0.
     """

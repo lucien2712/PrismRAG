@@ -1025,7 +1025,7 @@ class NodeEmbeddingEnhancer:
                 top_smart_entities.append(entity_copy)
 
         logger.info(
-            "Context-aware FastRP selected top %d entities with avg similarity: %.4f",
+            "Content-aware FastRP selected top %d entities with avg similarity: %.4f",
             len(top_smart_entities),
             (sum(e["adaptive_fastrp_similarity"] for e in top_smart_entities) / len(top_smart_entities))
             if top_smart_entities else 0.0,
