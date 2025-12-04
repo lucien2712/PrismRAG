@@ -2288,7 +2288,7 @@ class LightRAG:
                 chunks_vdb=self.chunks_vdb,
             )
         elif param.mode == "naive":
-            response = await naive_query(
+            response, context = await naive_query(
                 query.strip(),
                 self.chunks_vdb,
                 param,
@@ -2309,6 +2309,7 @@ class LightRAG:
                 history_messages=param.conversation_history,
                 stream=param.stream,
             )
+            context = None  # bypass mode doesn't provide context
         else:
             raise ValueError(f"Unknown mode {param.mode}")
         await self._query_done()

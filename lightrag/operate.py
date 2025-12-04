@@ -2663,7 +2663,7 @@ async def kg_query(
         hashing_kv, args_hash, query, query_param.mode, cache_type="query"
     )
     if cached_response is not None:
-        return cached_response, ""
+        return cached_response, None  # Return cached response with None context
 
     hl_keywords, ll_keywords = await get_keywords_from_query(
         query, query_param, global_config, hashing_kv
@@ -2682,7 +2682,7 @@ async def kg_query(
             logger.warning(f"Forced low_level_keywords to origin query: {query}")
             ll_keywords = [query]
         else:
-            return PROMPTS["fail_response"], ""
+            return PROMPTS["fail_response"], None  # Return fail response with None context
 
     ll_keywords_str = ", ".join(ll_keywords) if ll_keywords else ""
     hl_keywords_str = ", ".join(hl_keywords) if hl_keywords else ""
@@ -2702,9 +2702,9 @@ async def kg_query(
     )
 
     if query_param.only_need_context:
-        return (context if context is not None else PROMPTS["fail_response"]), ""
+        return None, (context if context is not None else PROMPTS["fail_response"])  # Return (None, context) tuple
     if context is None:
-        return PROMPTS["fail_response"], ""
+        return PROMPTS["fail_response"], None  # Return fail response with None context
 
     # Process conversation history
     history_context = ""
@@ -5574,7 +5574,7 @@ async def naive_query(
     global_config: dict[str, str],
     hashing_kv: BaseKVStorage | None = None,
     system_prompt: str | None = None,
-) -> str | AsyncIterator[str]:
+) -> tuple[str, str] | tuple[AsyncIterator[str], str]:
     if query_param.model_func:
         use_model_func = query_param.model_func
     else:
@@ -5601,14 +5601,14 @@ async def naive_query(
         hashing_kv, args_hash, query, query_param.mode, cache_type="query"
     )
     if cached_response is not None:
-        return cached_response
+        return cached_response, None  # Return cached response with None context
 
     tokenizer: Tokenizer = global_config["tokenizer"]
 
     chunks = await _get_vector_context(query, chunks_vdb, query_param, None)
 
     if chunks is None or len(chunks) == 0:
-        return PROMPTS["fail_response"]
+        return PROMPTS["fail_response"], None  # Return fail response with None context
 
     # Calculate dynamic token limit for chunks
     # Get token limits from query_param (with fallback to global_config)
@@ -5695,11 +5695,8 @@ async def naive_query(
     else:  # json format
         text_units_str = '\n'.join([json.dumps(c, ensure_ascii=False) for c in chunks_for_llm])
 
-    if query_param.only_need_context:
-        if query_param.context_format == "markdown":
-            return text_units_str
-        else:
-            return f"""
+    # Store context for return value
+    context_to_return = text_units_str if query_param.context_format == "markdown" else f"""
 ---Document Chunks(DC)---
 
 ```json
@@ -5707,6 +5704,10 @@ async def naive_query(
 ```
 
 """
+
+    if query_param.only_need_context:
+        return None, context_to_return  # Return (None, context) tuple
+
     # Process conversation history
     history_context = ""
     if query_param.conversation_history:
@@ -5729,7 +5730,7 @@ async def naive_query(
     )
 
     if query_param.only_need_prompt:
-        return sys_prompt
+        return sys_prompt, context_to_return  # Return (prompt, context) tuple
 
     len_of_prompts = len(tokenizer.encode(query + sys_prompt))
     logger.debug(
@@ -5781,4 +5782,4 @@ async def naive_query(
             ),
         )
 
-    return response
+    return response, context_to_return
