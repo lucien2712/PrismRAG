@@ -22,12 +22,16 @@ def load_existing_entity_types(working_dir: str) -> list:
     # Return default entity types if file doesn't exist or fails to load
     default_entity_types = [
         {
-            "entity_type": "Organization",
-            "explanation": "An entity representing organizations, companies, or institutions."
-        },
-        {
             "entity_type": "Person",
             "explanation": "An entity representing individual persons."
+        },
+        {
+            "entity_type": "Creature",
+            "explanation": "An entity representing living beings, animals, or organisms."
+        },
+        {
+            "entity_type": "Organization",
+            "explanation": "An entity representing organizations, companies, or institutions."
         },
         {
             "entity_type": "Location",
@@ -38,28 +42,28 @@ def load_existing_entity_types(working_dir: str) -> list:
             "explanation": "An entity representing events or activities."
         },
         {
-            "entity_type": "Technology",
-            "explanation": "An entity representing technological concepts, tools, or innovations."
+            "entity_type": "Concept",
+            "explanation": "An entity representing abstract concepts, ideas, or theories."
         },
         {
-            "entity_type": "Equipment",
-            "explanation": "An entity representing equipment, machinery, or devices."
+            "entity_type": "Method",
+            "explanation": "An entity representing methods, techniques, or procedures."
         },
         {
-            "entity_type": "Product",
-            "explanation": "An entity representing products, goods, or services."
+            "entity_type": "Content",
+            "explanation": "An entity representing content, information, or media."
         },
         {
-            "entity_type": "Document",
-            "explanation": "An entity representing documents, reports, or written materials."
+            "entity_type": "Data",
+            "explanation": "An entity representing data, datasets, or information structures."
         },
         {
-            "entity_type": "Category",
-            "explanation": "An entity representing general categories or classifications."
+            "entity_type": "Artifact",
+            "explanation": "An entity representing artifacts, objects, or manufactured items."
         },
         {
-            "entity_type": "temporal_range",
-            "explanation": "An entity representing time periods, including specific dates, months, quarters, or years (e.g., '2024 Q1', '2024 July')."
+            "entity_type": "NaturalObject",
+            "explanation": "An entity representing natural objects or phenomena."
         }
     ]
     logger.info(f"Using default entity types: {len(default_entity_types)} types")
