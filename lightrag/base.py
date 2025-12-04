@@ -110,6 +110,11 @@ class QueryParam:
     chunk_top_k: int = int(os.getenv("CHUNK_TOP_K", str(DEFAULT_CHUNK_TOP_K)))
     """Number of text chunks to retrieve initially from vector search and keep after reranking.
     If None, defaults to top_k value.
+
+    Special behavior: Set to 0 to enable KG-only mode, which excludes all document chunks from LLM context
+    and uses only entities and relations from the knowledge graph. This is useful for pure graph-based
+    reasoning without chunk content. Note: KG-only mode (chunk_top_k=0) is incompatible with 'mix' and
+    'naive' modes, which will raise a ValueError.
     """
 
     max_entity_tokens: int = int(
@@ -191,12 +196,6 @@ class QueryParam:
     - "json": Original JSON format with code blocks
     - "markdown": Markdown format with headers and lists (default)
     """
-
-    context_kg_only: bool = False
-    """If True, excludes document chunks from LLM context, using only entities and relations from knowledge graph.
-    When enabled, the system will only provide KG data (entities and relations) to the LLM without including
-    the original text chunks. This is useful when you want pure graph-based reasoning without chunk content.
-    Default is False."""
 
 
 @dataclass

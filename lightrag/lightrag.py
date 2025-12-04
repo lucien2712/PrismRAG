@@ -2264,6 +2264,16 @@ class LightRAG:
         if hasattr(self, 'token_tracker'):
             global_config["token_tracker"] = self.token_tracker
 
+        # Validate chunk_top_k=0 (KG-only mode) compatibility with query modes
+        if param.chunk_top_k == 0:
+            if param.mode in ["mix", "naive"]:
+                raise ValueError(
+                    f"KG-only mode (chunk_top_k=0) is incompatible with '{param.mode}' mode. "
+                    f"The '{param.mode}' mode requires text chunks for operation. "
+                    f"Please use mode='local', 'global', 'hybrid', or 'bypass', or set chunk_top_k > 0."
+                )
+            logger.info(f"KG-only mode enabled (chunk_top_k=0) for {param.mode} mode - chunks will be excluded from context")
+
         if param.mode in ["local", "global", "hybrid", "mix"]:
             response, context = await kg_query(
                 query.strip(),
@@ -2278,8 +2288,6 @@ class LightRAG:
                 chunks_vdb=self.chunks_vdb,
             )
         elif param.mode == "naive":
-            if param.context_kg_only:
-                logger.warning("context_kg_only parameter is ignored in naive mode (chunks-only mode)")
             response = await naive_query(
                 query.strip(),
                 self.chunks_vdb,
